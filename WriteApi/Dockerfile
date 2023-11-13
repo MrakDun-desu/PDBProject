@@ -9,13 +9,12 @@ EXPOSE 443
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 # make a source directory, copy over the project file
 WORKDIR /src
-COPY ["WriteApi/WriteApi.csproj", "WriteApi/"]
+COPY ["WriteApi.csproj", "."]
 # once the project file is copied, update the dependencies
-RUN dotnet restore "WriteApi/WriteApi.csproj"
+RUN dotnet restore
 # after updatingdependencies, copy the rest of the code
 COPY . .
 # go to the project directory and build it
-WORKDIR "/src/WriteApi"
 RUN dotnet build "WriteApi.csproj" -c Release -o /app/build
 
 # after building, publish the app
