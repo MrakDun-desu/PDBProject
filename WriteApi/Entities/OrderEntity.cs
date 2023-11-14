@@ -2,7 +2,7 @@ namespace WriteApi.Entities;
 
 public record OrderEntity
 {
-    public required int Id { get; init; }
+    public int Id { get; init; }
     public required int UserId { get; init; }
     public required UserEntity User { get; init; }
     public DateOnly? Date { get; set; }

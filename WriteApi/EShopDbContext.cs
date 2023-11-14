@@ -19,6 +19,8 @@ public class EShopDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<UserEntity>().HasIndex(user => user.Email).IsUnique();
+        
         modelBuilder.Entity<UserEntity>()
             .HasMany(user => user.Orders)
             .WithOne(order => order.User)

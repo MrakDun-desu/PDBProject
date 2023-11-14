@@ -1,10 +1,8 @@
-
 // create a builder that will create our needed application for us
 
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using WriteApi;
-using WriteApi.Entities;
 using WriteApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +16,8 @@ builder.Services.AddDbContext<EShopDbContext>(options => options.UseNpgsql(connS
 // note: for mongodb, you *probably* won't use entity framework since that's mostly used for relational dbs.
 // instead of adding DB context to services, you'll just add whatever service you'll need to provide 
 // interaction with mongodb
+
+builder.Services.AddSingleton<Mapper>();
 
 // add swagger to the builder (web UI for making the requests)
 builder.Services.AddEndpointsApiExplorer();
@@ -40,57 +40,48 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// if you need to use something in your handler, you can simply add it as a parameter and as long
-// as it's been added to services before, the application will automatically give you what you need.
-// here you can see that I'm injecting dbcontext that gives me database operations
-app.MapGet("user", (EShopDbContext dbContext) => {
-    return dbContext.Users.ToList();
-    // you can just return whatever you want, it will be serialized automatically
-});
-// if you want parametric mapping, you can just add them like this
-app.MapGet("user/{id:int}", (EShopDbContext dbContext, int id) => {
-    if (dbContext.Users.Find(id) is { } user)
+var userGroup = app.MapGroup("user");
+userGroup.MapPost("register",
+    Results<Ok<int>, BadRequest<string>> (Mapper mapper, EShopDbContext dbContext, UserRegisterModel userModel) =>
     {
-        return Results.Ok(user);
-    }
+        if (dbContext.Users.Any(user => user.Email == userModel.Email))
+        {
+            return TypedResults.BadRequest("User with the same email already exists!");
+        }
 
-    return Results.NotFound($"User with id {id} couldn't be found!");
-});
-// if you want to accept some POST body in JSON format, just add it to lambda signature
-app.MapPost("user", (EShopDbContext dbContext, UserModel userModel) =>
-{
-    // mapping the model to entity because we might want to accept different data types in http than have in table
-    // this can be automatized but I'm lazy so I'm just leaving it like this for now
-    var userEntity = new UserEntity
+        var insertedEntry = dbContext.Users.Add(mapper.ToEntity(userModel));
+        dbContext.SaveChanges();
+
+        return TypedResults.Ok(insertedEntry.Entity.Id);
+    });
+
+userGroup.MapPut(string.Empty,
+    Results<Ok<UserModel>, NotFound<string>> (Mapper mapper, EShopDbContext dbContext, UserModel userModel) =>
     {
-        Id = userModel.Id,
-        Address = userModel.Address,
-        Email = userModel.Email,
-        Name = userModel.Name
-    };
+        if (dbContext.Users.All(user => user.Id != userModel.Id))
+        {
+            return TypedResults.NotFound($"User with the id {userModel.Id} couldn't be found!");
+        }
 
-    var addedEntry = dbContext.Users.Add(userEntity);
-    dbContext.SaveChanges();
+        var userEntity = mapper.ToEntity(userModel);
+        var updatedEntry = dbContext.Users.Update(userEntity);
+        dbContext.SaveChanges();
 
-    return addedEntry.Entity.Id;
-});
-// if you want to accept some POST body in JSON format, just add it to lambda signature
-// here you can also see that you can enumerate the possible results of the request (these will show up in web UI)
-app.MapDelete("user/{id:int}", Results<Ok, NotFound<string>> (EShopDbContext dbContext, int id) =>
-{
-    var foundUser = dbContext.Users.Find(id);
-    if (foundUser is null) return TypedResults.NotFound($"User with id {id} couldn't be found!");
-    
-    dbContext.Remove(foundUser);
-    dbContext.SaveChanges();
-    return TypedResults.Ok();
+        return TypedResults.Ok(mapper.ToModel(updatedEntry.Entity));
+    });
 
-});
+userGroup.MapDelete("{id:int}",
+    Results<Ok, NotFound<string>> (EShopDbContext dbContext, int id) =>
+    {
+        if (dbContext.Users.Find(id) is not { } userToDelete)
+        {
+            return TypedResults.NotFound($"User with the id {id} couldn't be found!");
+        }
 
-app.MapGet("order", (EShopDbContext dbContext) => dbContext.Orders.ToList());
-app.MapGet("orderItem", (EShopDbContext dbContext) => dbContext.OrderItems.ToList());
-app.MapGet("product", (EShopDbContext dbContext) => dbContext.Products.ToList());
-app.MapGet("category", (EShopDbContext dbContext) => dbContext.Categories.ToList());
+        dbContext.Users.Remove(userToDelete);
+        dbContext.SaveChanges();
+        return TypedResults.Ok();
+    });
 
 
 app.Run();

@@ -2,7 +2,7 @@ namespace WriteApi.Entities;
 
 public record ProductEntity
 {
-    public required int Id { get; init; }
+    public int Id { get; init; }
     public required string Name { get; set; }
     public required float Price { get; set; }
     public required uint StockCount { get; set; }

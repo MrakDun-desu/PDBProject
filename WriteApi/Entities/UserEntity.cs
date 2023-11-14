@@ -2,7 +2,7 @@ namespace WriteApi.Entities;
 
 public record UserEntity
 {
-    public required int Id { get; init; }
+    public int Id { get; init; }
     public required string Name { get; set; }
     public string? Email { get; set; }
     public string? Address { get; set; }
