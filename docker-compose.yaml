@@ -7,8 +7,7 @@ networks:
     driver: bridge
 
 services: # individual services
-  demo-app: # .net API application
-#    image: docker.io/library/mrakdundesu:pdbproject
+  write_api: # write API application
     depends_on: ["postgres_db"] # depends on the database service
     container_name: write_api
     ports: ["8080:80"] # exposes port 80 under alias 8080

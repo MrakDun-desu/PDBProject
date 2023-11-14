@@ -2,7 +2,6 @@
 // create a builder that will create our needed application for us
 
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WriteApi;
 using WriteApi.Entities;
@@ -10,22 +9,15 @@ using WriteApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var databaseType = builder.Configuration["DatabaseType"];
-switch (databaseType)
-{
-    case "InMemory": // if configuration specifies in memory database, we use that (for simple testing)
-        builder.Services.AddDbContext<EShopDbContext>(options => options.UseInMemoryDatabase("eshop"));
-        break;
-    case "PostgreSQL": // if configuration specifies postgres, we get its connection string and use that
-        var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
-        builder.Services.AddDbContext<EShopDbContext>(options => options.UseNpgsql(connStr));
-        // note: for mongodb, you *probably* won't use entity framework since that's mostly used for relational dbs.
-        // instead of adding DB context to services, you'll just add whatever service you'll need to provide 
-        // interaction with mongodb
-        break;
-    default:
-        throw new ArgumentException("DatabaseType");
-}
+// get the connection string from configuration and connect to database
+// if we're running for development, we'll get it through the appsettings.json,
+// if we're running for production (in docker), we'll get it through environment variable
+// (builder can automatically get the correctly named env variable)
+var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<EShopDbContext>(options => options.UseNpgsql(connStr));
+// note: for mongodb, you *probably* won't use entity framework since that's mostly used for relational dbs.
+// instead of adding DB context to services, you'll just add whatever service you'll need to provide 
+// interaction with mongodb
 
 // add swagger to the builder (web UI for making the requests)
 builder.Services.AddEndpointsApiExplorer();
@@ -39,9 +31,8 @@ app.UseDeveloperExceptionPage();
 app.UseHttpsRedirection();
 
 // check if database is up to date with our current entities, if not, migrate it (update the tables)
-if (databaseType == "PostgreSQL")
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<EShopDbContext>();
     if (dbContext.Database.GetPendingMigrations().Any())
     {
