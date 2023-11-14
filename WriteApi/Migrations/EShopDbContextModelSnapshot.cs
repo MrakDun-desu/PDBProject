@@ -22,38 +22,6 @@ namespace WriteApi.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("CategoryEntityProductEntity", b =>
-                {
-                    b.Property<int>("CategoriesId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ProductsId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("CategoriesId", "ProductsId");
-
-                    b.HasIndex("ProductsId");
-
-                    b.ToTable("CategoryEntityProductEntity");
-                });
-
-            modelBuilder.Entity("WriteApi.Entities.CategoryEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Categories");
-                });
-
             modelBuilder.Entity("WriteApi.Entities.OrderEntity", b =>
                 {
                     b.Property<int>("Id")
@@ -62,8 +30,17 @@ namespace WriteApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<DateOnly?>("Date")
+                    b.Property<DateOnly?>("OrderedDate")
                         .HasColumnType("date");
+
+                    b.Property<DateOnly?>("ReceivedDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("ShippedDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
@@ -77,11 +54,8 @@ namespace WriteApi.Migrations
 
             modelBuilder.Entity("WriteApi.Entities.OrderItemEntity", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<int>("ProductId")
                         .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("OrderId")
                         .HasColumnType("integer");
@@ -89,14 +63,9 @@ namespace WriteApi.Migrations
                     b.Property<long>("ProductCount")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("ProductId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
+                    b.HasKey("ProductId", "OrderId");
 
                     b.HasIndex("OrderId");
-
-                    b.HasIndex("ProductId");
 
                     b.ToTable("OrderItems");
                 });
@@ -108,6 +77,10 @@ namespace WriteApi.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string[]>("Categories")
+                        .IsRequired()
+                        .HasColumnType("text[]");
 
                     b.Property<string>("Description")
                         .HasColumnType("text");
@@ -151,21 +124,6 @@ namespace WriteApi.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
-                });
-
-            modelBuilder.Entity("CategoryEntityProductEntity", b =>
-                {
-                    b.HasOne("WriteApi.Entities.CategoryEntity", null)
-                        .WithMany()
-                        .HasForeignKey("CategoriesId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("WriteApi.Entities.ProductEntity", null)
-                        .WithMany()
-                        .HasForeignKey("ProductsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("WriteApi.Entities.OrderEntity", b =>

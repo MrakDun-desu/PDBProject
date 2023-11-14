@@ -9,7 +9,6 @@ public class EShopDbContext : DbContext
     public DbSet<OrderEntity> Orders { get; init; } = null!;
     public DbSet<OrderItemEntity> OrderItems { get; init; } = null!;
     public DbSet<ProductEntity> Products { get; init; } = null!;
-    public DbSet<CategoryEntity> Categories { get; init; } = null!;
     
     public EShopDbContext(DbContextOptions<EShopDbContext> options) : base(options)
     {
@@ -30,10 +29,5 @@ public class EShopDbContext : DbContext
             .HasMany(order => order.OrderItems)
             .WithOne(orderItem => orderItem.Order)
             .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<ProductEntity>()
-            .HasMany(product => product.Categories)
-            .WithMany(category => category.Products);
-        
     }
 }

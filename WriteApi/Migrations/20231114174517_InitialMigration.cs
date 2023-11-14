@@ -13,19 +13,6 @@ namespace WriteApi.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Categories",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Name = table.Column<string>(type: "text", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Categories", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Products",
                 columns: table => new
                 {
@@ -34,7 +21,8 @@ namespace WriteApi.Migrations
                     Name = table.Column<string>(type: "text", nullable: false),
                     Price = table.Column<float>(type: "real", nullable: false),
                     StockCount = table.Column<long>(type: "bigint", nullable: false),
-                    Description = table.Column<string>(type: "text", nullable: true)
+                    Description = table.Column<string>(type: "text", nullable: true),
+                    Categories = table.Column<string[]>(type: "text[]", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -57,37 +45,16 @@ namespace WriteApi.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "CategoryEntityProductEntity",
-                columns: table => new
-                {
-                    CategoriesId = table.Column<int>(type: "integer", nullable: false),
-                    ProductsId = table.Column<int>(type: "integer", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_CategoryEntityProductEntity", x => new { x.CategoriesId, x.ProductsId });
-                    table.ForeignKey(
-                        name: "FK_CategoryEntityProductEntity_Categories_CategoriesId",
-                        column: x => x.CategoriesId,
-                        principalTable: "Categories",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_CategoryEntityProductEntity_Products_ProductsId",
-                        column: x => x.ProductsId,
-                        principalTable: "Products",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Orders",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     UserId = table.Column<int>(type: "integer", nullable: false),
-                    Date = table.Column<DateOnly>(type: "date", nullable: true)
+                    State = table.Column<int>(type: "integer", nullable: false),
+                    OrderedDate = table.Column<DateOnly>(type: "date", nullable: true),
+                    ShippedDate = table.Column<DateOnly>(type: "date", nullable: true),
+                    ReceivedDate = table.Column<DateOnly>(type: "date", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -104,15 +71,13 @@ namespace WriteApi.Migrations
                 name: "OrderItems",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     ProductId = table.Column<int>(type: "integer", nullable: false),
                     OrderId = table.Column<int>(type: "integer", nullable: false),
                     ProductCount = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OrderItems", x => x.Id);
+                    table.PrimaryKey("PK_OrderItems", x => new { x.ProductId, x.OrderId });
                     table.ForeignKey(
                         name: "FK_OrderItems_Orders_OrderId",
                         column: x => x.OrderId,
@@ -128,19 +93,9 @@ namespace WriteApi.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_CategoryEntityProductEntity_ProductsId",
-                table: "CategoryEntityProductEntity",
-                column: "ProductsId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_OrderItems_OrderId",
                 table: "OrderItems",
                 column: "OrderId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_OrderItems_ProductId",
-                table: "OrderItems",
-                column: "ProductId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Orders_UserId",
@@ -158,13 +113,7 @@ namespace WriteApi.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "CategoryEntityProductEntity");
-
-            migrationBuilder.DropTable(
                 name: "OrderItems");
-
-            migrationBuilder.DropTable(
-                name: "Categories");
 
             migrationBuilder.DropTable(
                 name: "Orders");

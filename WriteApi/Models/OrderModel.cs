@@ -1,10 +1,13 @@
+using WriteApi.Enums;
+
 namespace WriteApi.Models;
 
 public record OrderModel
 {
-    public required int Id { get; init; }
+    public int Id { get; init; }
     public required int UserId { get; init; }
-    public DateOnly? Date { get; set; }
-    
-    public ICollection<OrderItemModel> OrderItems { get; set; } = new List<OrderItemModel>();
+    public OrderState State { get; set; } = OrderState.InBasket;
+    public DateOnly? OrderedDate { get; set; }
+    public DateOnly? ShippedDate { get; set; }
+    public DateOnly? ReceivedDate { get; set; }
 }

@@ -8,5 +8,5 @@ public record ProductEntity
     public required uint StockCount { get; set; }
     public string? Description { get; set; }
 
-    public ICollection<CategoryEntity> Categories { get; set; } = new List<CategoryEntity>();
+    public string[] Categories { get; set; } = Array.Empty<string>();
 }

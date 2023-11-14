@@ -7,4 +7,5 @@ public record ProductModel
     public required float Price { get; set; }
     public required uint StockCount { get; set; }
     public string? Description { get; set; }
+    public ICollection<string> Categories { get; set; } = new List<string>();
 }

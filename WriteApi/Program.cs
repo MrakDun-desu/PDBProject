@@ -41,47 +41,53 @@ using (var scope = app.Services.CreateScope())
 }
 
 var userGroup = app.MapGroup("user");
-userGroup.MapPost("register",
-    Results<Ok<int>, BadRequest<string>> (Mapper mapper, EShopDbContext dbContext, UserRegisterModel userModel) =>
-    {
-        if (dbContext.Users.Any(user => user.Email == userModel.Email))
-        {
-            return TypedResults.BadRequest("User with the same email already exists!");
-        }
-
-        var insertedEntry = dbContext.Users.Add(mapper.ToEntity(userModel));
-        dbContext.SaveChanges();
-
-        return TypedResults.Ok(insertedEntry.Entity.Id);
-    });
-
-userGroup.MapPut(string.Empty,
-    Results<Ok<UserModel>, NotFound<string>> (Mapper mapper, EShopDbContext dbContext, UserModel userModel) =>
-    {
-        if (dbContext.Users.All(user => user.Id != userModel.Id))
-        {
-            return TypedResults.NotFound($"User with the id {userModel.Id} couldn't be found!");
-        }
-
-        var userEntity = mapper.ToEntity(userModel);
-        var updatedEntry = dbContext.Users.Update(userEntity);
-        dbContext.SaveChanges();
-
-        return TypedResults.Ok(mapper.ToModel(updatedEntry.Entity));
-    });
-
-userGroup.MapDelete("{id:int}",
-    Results<Ok, NotFound<string>> (EShopDbContext dbContext, int id) =>
-    {
-        if (dbContext.Users.Find(id) is not { } userToDelete)
-        {
-            return TypedResults.NotFound($"User with the id {id} couldn't be found!");
-        }
-
-        dbContext.Users.Remove(userToDelete);
-        dbContext.SaveChanges();
-        return TypedResults.Ok();
-    });
-
+MapUsers(userGroup);
 
 app.Run();
+
+return;
+
+void MapUsers(IEndpointRouteBuilder routeBuilder)
+{
+    routeBuilder.MapPost(string.Empty,
+        Results<Ok<int>, BadRequest<string>> (Mapper mapper, EShopDbContext dbContext, UserModel userModel) =>
+        {
+            if (dbContext.Users.Any(user => user.Email == userModel.Email))
+            {
+                return TypedResults.BadRequest("User with the same email already exists!");
+            }
+
+            var insertedEntry = dbContext.Users.Add(mapper.ToEntity(userModel with { Id = 0 }));
+            dbContext.SaveChanges();
+
+            return TypedResults.Ok(insertedEntry.Entity.Id);
+        });
+
+    routeBuilder.MapPut(string.Empty,
+        Results<Ok<UserModel>, NotFound<string>> (Mapper mapper, EShopDbContext dbContext, UserModel userModel) =>
+        {
+            if (dbContext.Users.All(user => user.Id != userModel.Id))
+            {
+                return TypedResults.NotFound($"User with the id {userModel.Id} couldn't be found!");
+            }
+
+            var userEntity = mapper.ToEntity(userModel);
+            var updatedEntry = dbContext.Users.Update(userEntity);
+            dbContext.SaveChanges();
+
+            return TypedResults.Ok(mapper.ToModel(updatedEntry.Entity));
+        });
+
+    routeBuilder.MapDelete("{id:int}",
+        Results<Ok, NotFound<string>> (EShopDbContext dbContext, int id) =>
+        {
+            if (dbContext.Users.Find(id) is not { } userToDelete)
+            {
+                return TypedResults.NotFound($"User with the id {id} couldn't be found!");
+            }
+
+            dbContext.Users.Remove(userToDelete);
+            dbContext.SaveChanges();
+            return TypedResults.Ok();
+        });
+}
