@@ -12,7 +12,7 @@ using WriteApi;
 namespace WriteApi.Migrations
 {
     [DbContext(typeof(EShopDbContext))]
-    [Migration("20231114174517_InitialMigration")]
+    [Migration("20231115180316_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
