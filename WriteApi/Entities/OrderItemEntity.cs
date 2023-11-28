@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace WriteApi.Entities;
+namespace PDBProject.WriteApi.Entities;
 
 [PrimaryKey(nameof(ProductId), nameof(OrderId))]
 public record OrderItemEntity

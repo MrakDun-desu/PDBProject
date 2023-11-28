@@ -1,65 +1,51 @@
-﻿using Microsoft.AspNetCore.Cors;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using MongoDB.Driver;
-using ReadApi.Models;
-using ReadApi.Services;
+using PDBProject.ReadApi.Models;
+using PDBProject.ReadApi.Services;
 
-namespace ReadApi.Controllers
+namespace PDBProject.ReadApi.Controllers;
+
+[ApiController]
+[Route("[controller]")]
+public class ProductController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class ProductController : ControllerBase
+    private readonly ProductService _productService;
+
+    public ProductController(ProductService productService)
     {
-        private readonly ProductService _productService;
+        _productService = productService;
+    }
 
-        public ProductController(ProductService productService) => _productService = productService;
+    [HttpGet("{id:int}")]
+    public async Task<Results<NotFound, Ok<ProductEntity>>> GetProductById(int id)
+    {
+        var existingProduct = await _productService.GetAsyncById(id);
+        if (existingProduct is null) return TypedResults.NotFound();
 
-        [HttpGet("{id:length(24)}")]
-        public async Task<IActionResult> GetProductById(string id)
-        {
-            var existingProduct = await _productService.GetAsyncById(id);
-            if (existingProduct is null)
-            {
-                return NotFound();
-            }
+        return TypedResults.Ok(existingProduct);
+    }
 
-            return Ok(existingProduct);
-        }
+    [HttpGet]
+    public async Task<Ok<List<ProductEntity>>> GetAllProducts()
+    {
+        var allProducts = await _productService.GetAsyncAll();
 
-        [HttpGet]
-        public async Task<IActionResult> GetAllProducts()
-        {
-            var allProducts = await _productService.GetAsyncAll();
+        return TypedResults.Ok(allProducts);
+    }
 
-            if (allProducts.Any())
-            {
-                return Ok(allProducts);
-            }
-            return NotFound();
-        }
+    [HttpGet("{price:int}/{upperBorderPrice:int}")]
+    public async Task<Ok<List<ProductEntity>>> GetProductsByPrice(int price, int upperBorderPrice)
+    {
+        var allProductEqualToPrice = await _productService.GetAsyncByPrice(price, upperBorderPrice);
 
-        [HttpGet("{price}/{upper_border_price}")]
-        public async Task<IActionResult> GetProductsByPrice(int price, int upper_border_price)
-        {
-            var allProductEqualToPrice = await _productService.GetAsyncByPrice(price, upper_border_price);
+        return TypedResults.Ok(allProductEqualToPrice);
+    }
 
-            if (allProductEqualToPrice.Any())
-            {
-                return Ok(allProductEqualToPrice);
-            }
-            return NotFound();
-        }
+    [HttpGet("{category}")]
+    public async Task<Ok<List<ProductEntity>>> GetProductsByCategory(string category)
+    {
+        var allProductEqualToCategory = await _productService.GetAsyncByCategory(category);
 
-        [HttpGet("{category}")]
-        public async Task<IActionResult> GetProductsByCategory(string category)
-        {
-            var allProductEqualToCategory = await _productService.GetAsyncByCategory(category);
-
-            if (allProductEqualToCategory.Any())
-            {
-                return Ok(allProductEqualToCategory);
-            }
-            return NotFound();
-        }
+        return TypedResults.Ok(allProductEqualToCategory);
     }
 }

@@ -1,25 +1,25 @@
 using Microsoft.EntityFrameworkCore;
-using WriteApi.Entities;
+using PDBProject.WriteApi.Entities;
 
-namespace WriteApi;
+namespace PDBProject.WriteApi;
 
 public class EShopDbContext : DbContext
 {
+    public EShopDbContext(DbContextOptions<EShopDbContext> options) : base(options)
+    {
+    }
+
     public DbSet<UserEntity> Users { get; init; } = null!;
     public DbSet<OrderEntity> Orders { get; init; } = null!;
     public DbSet<OrderItemEntity> OrderItems { get; init; } = null!;
     public DbSet<ProductEntity> Products { get; init; } = null!;
-    
-    public EShopDbContext(DbContextOptions<EShopDbContext> options) : base(options)
-    {
-    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<UserEntity>().HasIndex(user => user.Email).IsUnique();
-        
+
         modelBuilder.Entity<UserEntity>()
             .HasMany(user => user.Orders)
             .WithOne(order => order.User)
@@ -32,6 +32,5 @@ public class EShopDbContext : DbContext
 
         modelBuilder.Entity<OrderItemEntity>()
             .HasOne(orderItem => orderItem.Product);
-
     }
 }

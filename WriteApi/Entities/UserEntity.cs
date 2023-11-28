@@ -1,4 +1,4 @@
-namespace WriteApi.Entities;
+namespace PDBProject.WriteApi.Entities;
 
 public record UserEntity
 {

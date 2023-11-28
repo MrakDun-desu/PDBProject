@@ -1,29 +1,47 @@
 ﻿using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using ReadApi.Configurations;
-using ReadApi.Models;
+using PDBProject.ReadApi.Configurations;
+using PDBProject.ReadApi.Models;
 
-namespace ReadApi.Services
+namespace PDBProject.ReadApi.Services;
+
+public class UserService
 {
-    public class UserService
+    private readonly IMongoCollection<UserEntity> _userCollection;
+
+    public UserService(IOptions<DatabaseSettings> databaseSettings)
     {
-        private readonly IMongoCollection<UserModel> _userCollection;
+        var mongoClient = new MongoClient(databaseSettings.Value.ConnectionStrings);
+        var mongoDb = mongoClient.GetDatabase(databaseSettings.Value.DatabaseName);
 
-        public UserService(IOptions<DatabaseSettings> databaseSettings)
-        {
-            var mongoClient = new MongoClient(databaseSettings.Value.ConnectionStrings);
-            var mongoDb = mongoClient.GetDatabase(databaseSettings.Value.DatabaseName);
-            _userCollection = mongoDb.GetCollection<UserModel>(databaseSettings.Value.UserCollection);
-        }
+        if (!mongoDb.ListCollectionNames().ToList().Contains(databaseSettings.Value.UserCollection))
+            // if collection doesn't exist at startup time, we create it just to be sure
+            mongoDb.CreateCollection(databaseSettings.Value.UserCollection);
+        _userCollection = mongoDb.GetCollection<UserEntity>(databaseSettings.Value.UserCollection);
+    }
 
-        public async Task<List<UserModel>> GetAsync() => await _userCollection.Find(_ =>  true).ToListAsync();
-        public async Task<UserModel> GetAsync(string id) => await _userCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
+    public async Task<List<UserEntity>> GetAsync()
+    {
+        return await _userCollection.Find(_ => true).ToListAsync();
+    }
 
-        public async Task CreateAsync(UserModel User) => await _userCollection.InsertOneAsync(User);
+    public async Task<UserEntity?> GetAsync(int id)
+    {
+        return await _userCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
+    }
 
-        public async Task UpdateAsync(UserModel User) => await _userCollection.ReplaceOneAsync(x => x.Id == User.Id, User);
+    public async Task CreateAsync(UserEntity user)
+    {
+        await _userCollection.InsertOneAsync(user);
+    }
 
-        public async Task RemoveAsync(string id) => await _userCollection.DeleteOneAsync(x => x.Id == id);
+    public async Task UpdateAsync(UserEntity user)
+    {
+        await _userCollection.ReplaceOneAsync(x => x.Id == user.Id, user);
+    }
 
+    public async Task RemoveAsync(int id)
+    {
+        await _userCollection.DeleteOneAsync(x => x.Id == id);
     }
 }

@@ -2,9 +2,9 @@
 
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using WriteApi;
-using WriteApi.Enums;
-using WriteApi.Models;
+using PDBProject.Common.Enums;
+using PDBProject.Common.Models;
+using PDBProject.WriteApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,10 +35,7 @@ app.UseHttpsRedirection();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<EShopDbContext>();
-    if (dbContext.Database.GetPendingMigrations().Any())
-    {
-        dbContext.Database.Migrate();
-    }
+    if (dbContext.Database.GetPendingMigrations().Any()) dbContext.Database.Migrate();
 }
 
 var userGroup = app.MapGroup("user");
@@ -60,9 +57,7 @@ void MapUsers(IEndpointRouteBuilder routeBuilder)
         Results<Ok<int>, BadRequest<string>> (Mapper mapper, EShopDbContext dbContext, UserModel userModel) =>
         {
             if (dbContext.Users.Any(user => user.Email == userModel.Email))
-            {
                 return TypedResults.BadRequest("User with the same email already exists!");
-            }
 
             var insertedEntry = dbContext.Users.Add(mapper.ToEntity(userModel with { Id = 0 }));
             dbContext.SaveChanges();
@@ -74,9 +69,7 @@ void MapUsers(IEndpointRouteBuilder routeBuilder)
         Results<Ok, NotFound<string>> (Mapper mapper, EShopDbContext dbContext, UserModel userModel) =>
         {
             if (dbContext.Users.All(user => user.Id != userModel.Id))
-            {
                 return TypedResults.NotFound($"User with the id {userModel.Id} couldn't be found!");
-            }
 
             var userEntity = mapper.ToEntity(userModel);
             dbContext.Users.Update(userEntity);
@@ -89,9 +82,7 @@ void MapUsers(IEndpointRouteBuilder routeBuilder)
         Results<Ok, NotFound<string>> (EShopDbContext dbContext, int id) =>
         {
             if (dbContext.Users.Find(id) is not { } userToDelete)
-            {
                 return TypedResults.NotFound($"User with the id {id} couldn't be found!");
-            }
 
             dbContext.Users.Remove(userToDelete);
             dbContext.SaveChanges();
@@ -115,9 +106,7 @@ void MapProducts(IEndpointRouteBuilder routeBuilder)
             ProductModel productModel) =>
         {
             if (dbContext.Products.All(product => product.Id != productModel.Id))
-            {
                 return TypedResults.NotFound($"Product with the id {productModel.Id} couldn't be found!");
-            }
 
             var productEntity = mapper.ToEntity(productModel);
             dbContext.Products.Update(productEntity);
@@ -130,9 +119,7 @@ void MapProducts(IEndpointRouteBuilder routeBuilder)
         Results<Ok, NotFound<string>> (EShopDbContext dbContext, int id) =>
         {
             if (dbContext.Products.Find(id) is not { } productToDelete)
-            {
                 return TypedResults.NotFound($"Product with the id {id} couldn't be found!");
-            }
 
             dbContext.Products.Remove(productToDelete);
             dbContext.SaveChanges();
@@ -158,29 +145,22 @@ void MapOrders(IEndpointRouteBuilder routeBuilder)
                 .Include(order => order.OrderItems)
                 .ThenInclude(orderItemEntity => orderItemEntity.Product)
                 .SingleOrDefault(order => order.Id == id);
-            if (orderEntity is null)
-            {
-                return TypedResults.NotFound($"Order with the id {id} couldn't be found!");
-            }
+            if (orderEntity is null) return TypedResults.NotFound($"Order with the id {id} couldn't be found!");
 
             if (orderEntity.State != OrderState.InBasket)
-            {
                 return TypedResults.BadRequest($"Cannot checkout order in state {orderEntity.State}!");
-            }
 
             foreach (var orderItem in orderEntity.OrderItems)
             {
                 if (orderItem.ProductCount > orderItem.Product.StockCount)
-                {
                     return TypedResults.BadRequest($"Not enough of product {orderItem.Product.Name} in stock!");
-                }
 
                 orderItem.Product.StockCount -= orderItem.ProductCount;
                 dbContext.Products.Update(orderItem.Product);
             }
 
             orderEntity.State = OrderState.Ordered;
-            orderEntity.OrderedDate = DateOnly.FromDateTime(DateTime.Now);
+            orderEntity.OrderedDate = DateTime.UtcNow;
             dbContext.Orders.Update(orderEntity);
             dbContext.SaveChanges();
 
@@ -191,17 +171,13 @@ void MapOrders(IEndpointRouteBuilder routeBuilder)
         Results<Ok, BadRequest<string>, NotFound<string>> (EShopDbContext dbContext, int id) =>
         {
             if (dbContext.Orders.Find(id) is not { } orderEntity)
-            {
                 return TypedResults.NotFound($"Order with the id {id} couldn't be found!");
-            }
 
             if (orderEntity.State != OrderState.Ordered)
-            {
                 return TypedResults.BadRequest($"Cannot ship order in state {orderEntity.State}!");
-            }
 
             orderEntity.State = OrderState.Shipped;
-            orderEntity.ShippedDate = DateOnly.FromDateTime(DateTime.Now);
+            orderEntity.ShippedDate = DateTime.UtcNow;
             dbContext.Orders.Update(orderEntity);
             dbContext.SaveChanges();
 
@@ -212,17 +188,13 @@ void MapOrders(IEndpointRouteBuilder routeBuilder)
         Results<Ok, BadRequest<string>, NotFound<string>> (EShopDbContext dbContext, int id) =>
         {
             if (dbContext.Orders.Find(id) is not { } orderEntity)
-            {
                 return TypedResults.NotFound($"Order with the id {id} couldn't be found!");
-            }
 
             if (orderEntity.State != OrderState.Shipped)
-            {
                 return TypedResults.BadRequest($"Cannot confirm order in state {orderEntity.State}!");
-            }
 
             orderEntity.State = OrderState.Received;
-            orderEntity.ReceivedDate = DateOnly.FromDateTime(DateTime.Now);
+            orderEntity.ReceivedDate = DateTime.UtcNow;
             dbContext.Orders.Update(orderEntity);
             dbContext.SaveChanges();
 
@@ -233,9 +205,7 @@ void MapOrders(IEndpointRouteBuilder routeBuilder)
         Results<Ok, NotFound<string>> (EShopDbContext dbContext, int id) =>
         {
             if (dbContext.Orders.Find(id) is not { } orderToDelete)
-            {
                 return TypedResults.NotFound($"Order with the id {id} couldn't be found!");
-            }
 
             dbContext.Orders.Remove(orderToDelete);
             dbContext.SaveChanges();
@@ -245,30 +215,22 @@ void MapOrders(IEndpointRouteBuilder routeBuilder)
 
 void MapOrderItems(IEndpointRouteBuilder routeBuilder)
 {
-    routeBuilder.MapPost(string.Empty, 
+    routeBuilder.MapPost(string.Empty,
         Results<Ok, BadRequest<string>, NotFound<string>> (Mapper mapper, EShopDbContext dbContext,
             OrderItemModel orderItemModel) =>
         {
             if (dbContext.Orders.Find(orderItemModel.OrderId) is not { } orderEntity)
-            {
                 return TypedResults.NotFound($"Order with the id {orderItemModel.OrderId} couldn't be found!");
-            }
 
             if (orderEntity.State != OrderState.InBasket)
-            {
                 return TypedResults.BadRequest("Cannot change products, order no longer in basket!");
-            }
 
             if (dbContext.OrderItems.Find(orderItemModel.ProductId, orderItemModel.OrderId) is { } orderItemEntity)
             {
                 if (orderItemModel.ProductCount == 0)
-                {
                     dbContext.OrderItems.Remove(orderItemEntity);
-                }
                 else
-                {
                     orderItemEntity.ProductCount = orderItemModel.ProductCount;
-                }
             }
             else
             {

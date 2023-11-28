@@ -21,8 +21,8 @@ services: # individual services
     networks:
       dev:
         ipv4_address: 192.168.42.2
-  
-  postgres_db: # database
+        
+  postgres_db: # write database
     image: postgres:latest # use the latest postgres image from dockerhub
     container_name: postgres_db
     environment: # environment vars for configuration of db
@@ -35,16 +35,34 @@ services: # individual services
     networks:
       dev:
         ipv4_address: 192.168.42.3
-
-  mongo_db: #database
-    image: mongo:latest
-    container_name: mongo_db
-    restart: always
-    volumes:
-        - app_data:/var/lib/mongodb/data
-    networks: 
+  
+  read_api: # read API application
+    depends_on: [ "mongo_db" ]
+    container_name: read_api
+    build:
+      context: ReadApi
+    environment: # environment vars for dynamic configuration (no need to hardcode anywhere else)
+      - MongoDB__ConnectionStrings=mongodb://root:sduD2xnvZGLFCq@mongo_db:27017
+      - MongoDB__DatabaseName=eshop
+      - MongoDB__UserCollection=Users
+      - MongoDB__ProductCollection=Products
+      - ASPNETCORE_URLS=http://+:80
+    networks:
       dev:
         ipv4_address: 192.168.42.4
+  
+  mongo_db: # database
+    image: mongo:latest
+    container_name: mongo_db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: sduD2xnvZGLFCq
+    restart: always
+    volumes:
+        - app_data:/data/db
+    networks: 
+      dev:
+        ipv4_address: 192.168.42.5
 
     
 # volumes (actual local storage that will be used by containers for persistent data)

@@ -1,33 +1,59 @@
 ﻿using Microsoft.Extensions.Options;
-using MongoDB.Bson;
 using MongoDB.Driver;
-using ReadApi.Configurations;
-using ReadApi.Models;
+using PDBProject.ReadApi.Configurations;
+using PDBProject.ReadApi.Models;
 
-namespace ReadApi.Services
+namespace PDBProject.ReadApi.Services;
+
+public class ProductService
 {
-    public class ProductService
+    private readonly IMongoCollection<ProductEntity> _productCollection;
+
+    public ProductService(IOptions<DatabaseSettings> databaseSettings)
     {
-        private readonly IMongoCollection<ProductModel> _productCollection;
+        var mongoClient = new MongoClient(databaseSettings.Value.ConnectionStrings);
+        var mongoDb = mongoClient.GetDatabase(databaseSettings.Value.DatabaseName);
 
-        public ProductService(IOptions<DatabaseSettings> databaseSettings)
-        {
-            MongoClient mongoClient = new MongoClient(databaseSettings.Value.ConnectionStrings);
-            IMongoDatabase mongoDb = mongoClient.GetDatabase(databaseSettings.Value.DatabaseName);
-            _productCollection = mongoDb.GetCollection<ProductModel>(databaseSettings.Value.ProductCollection);
-        }
+        if (!mongoDb.ListCollectionNames().ToList().Contains(databaseSettings.Value.ProductCollection))
+            // if collection doesn't exist at startup time, we create it just to be sure
+            mongoDb.CreateCollection(databaseSettings.Value.ProductCollection);
+        _productCollection = mongoDb.GetCollection<ProductEntity>(databaseSettings.Value.ProductCollection);
+    }
 
-        public async Task<List<ProductModel>> GetAsyncAll() => await _productCollection.Find(_ => true).ToListAsync();
-        public async Task<ProductModel> GetAsyncById(string id) => await _productCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
+    public async Task<List<ProductEntity>> GetAsyncAll()
+    {
+        var findResults = await _productCollection.FindAsync(_ => true);
+        return await findResults.ToListAsync();
+    }
 
-        public async Task<List<ProductModel>> GetAsyncByPrice(int lower_border_price, int upper_border_price) => await _productCollection.Find(x => x.price >= lower_border_price && x.price <= upper_border_price).ToListAsync();
-        
-        public async Task<List<ProductModel>> GetAsyncByCategory(string category) => await _productCollection.Find(x => x.categoryName == category).ToListAsync();
-        public async Task CreateAsync(ProductModel User) => await _productCollection.InsertOneAsync(User);
+    public async Task<ProductEntity?> GetAsyncById(int id)
+    {
+        return await _productCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
+    }
 
-        public async Task UpdateAsync(ProductModel User) => await _productCollection.ReplaceOneAsync(x => x.Id == User.Id, User);
+    public async Task<List<ProductEntity>> GetAsyncByPrice(int lowerBorderPrice, int upperBorderPrice)
+    {
+        return await _productCollection.Find(x => x.Price >= lowerBorderPrice && x.Price <= upperBorderPrice)
+            .ToListAsync();
+    }
 
-        public async Task RemoveAsync(string id) => await _productCollection.DeleteOneAsync(x => x.Id == id);
+    public async Task<List<ProductEntity>> GetAsyncByCategory(string category)
+    {
+        return await _productCollection.Find(x => x.Categories.Contains(category)).ToListAsync();
+    }
 
+    public async Task CreateAsync(ProductEntity user)
+    {
+        await _productCollection.InsertOneAsync(user);
+    }
+
+    public async Task UpdateAsync(ProductEntity user)
+    {
+        await _productCollection.ReplaceOneAsync(x => x.Id == user.Id, user);
+    }
+
+    public async Task RemoveAsync(int id)
+    {
+        await _productCollection.DeleteOneAsync(x => x.Id == id);
     }
 }

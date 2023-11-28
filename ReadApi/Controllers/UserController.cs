@@ -1,39 +1,35 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using ReadApi.Services;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using PDBProject.ReadApi.Models;
+using PDBProject.ReadApi.Services;
 
-namespace ReadApi.Controllers
+namespace PDBProject.ReadApi.Controllers;
+
+[ApiController]
+[Route("[controller]")]
+public class UserController : ControllerBase
 {
-    [ApiController]
-    [Route("api/readapi/[controller]")]
-    public class UserController : ControllerBase
+    private readonly UserService _userService;
+
+    public UserController(UserService userService)
     {
-        private readonly UserService _userService;
+        _userService = userService;
+    }
 
-        public UserController(UserService userService) => _userService = userService;
+    [HttpGet("{id:int}")]
+    public async Task<Results<Ok<UserEntity>, NotFound>> Get(int id)
+    {
+        var existingUser = await _userService.GetAsync(id);
+        if (existingUser is null) return TypedResults.NotFound();
 
-        [HttpGet("{id:length(24)}")]
-        public async Task<IActionResult> Get(string id)
-        {
-            var existingUser = await _userService.GetAsync(id);
-            if (existingUser is null)
-            {
-                return NotFound();
-            }
+        return TypedResults.Ok(existingUser);
+    }
 
-            return Ok(existingUser);
-        }
+    [HttpGet]
+    public async Task<Ok<List<UserEntity>>> Get()
+    {
+        var allUsers = await _userService.GetAsync();
 
-        [HttpGet]
-        public async Task<IActionResult> Get()
-        {
-            var allUsers = await _userService.GetAsync();
-
-            if(allUsers.Any())
-            {
-                return Ok(allUsers);
-            }
-            return NotFound();
-        }
-
+        return TypedResults.Ok(allUsers);
     }
 }

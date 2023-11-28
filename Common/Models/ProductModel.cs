@@ -1,12 +1,11 @@
-namespace PDBProject.WriteApi.Entities;
+namespace PDBProject.Common.Models;
 
-public record ProductEntity
+public record ProductModel
 {
-    public int Id { get; init; }
+    public required int Id { get; init; }
     public required string Name { get; set; }
     public required float Price { get; set; }
     public required uint StockCount { get; set; }
     public string? Description { get; set; }
-
-    public string[] Categories { get; set; } = Array.Empty<string>();
+    public ICollection<string> Categories { get; set; } = new List<string>();
 }
