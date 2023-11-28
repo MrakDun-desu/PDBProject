@@ -5,45 +5,48 @@ version: '3.4'
 networks:
   dev:
     driver: bridge
+    ipam:
+      config:
+        - subnet: "192.168.42.0/24"
 
 services: # individual services
   write_api: # write API application
-    depends_on: ["postgres_db"] # depends on the database service
+    depends_on: [ "postgres_db" ] # depends on the database service
     container_name: write_api
-    ports: ["8080:80"] # exposes port 80 under alias 8080
     build: # build the dockerfile inside this directory before starting it
       context: WriteApi
-      dockerfile: Dockerfile
     environment: # environment vars for dynamic configuration (no need to hardcode anywhere else)
-      - ConnectionStrings__DefaultConnection=User ID=postgres;Password=postgres;Server=localhost;Port=5432;Database=eshop;IntegratedSecurity=true;
+      - ConnectionStrings__DefaultConnection=User ID=postgres;Password=jQ^wxJeE@8x4sZ;Server=postgres_db;Port=5432;Database=eshop;IntegratedSecurity=true;
       - ASPNETCORE_URLS=http://+:80
-    networks: [dev] # connected to the dev network
-    
+    networks:
+      dev:
+        ipv4_address: 192.168.42.2
+  
   postgres_db: # database
     image: postgres:latest # use the latest postgres image from dockerhub
     container_name: postgres_db
     environment: # environment vars for configuration of db
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=jQ^wxJeE@8x4sZ
       - POSTGRES_DB=eshop
-    ports: ["5433:5432"] # exposes port 5432 under alias 5433
     restart: always # always restart in case of failure
     volumes: # store persistent data on the app_data volume
       - app_data:/var/lib/postgresql/data # physical location of the volume
-    networks: [dev] # connected to the dev network
+    networks:
+      dev:
+        ipv4_address: 192.168.42.3
 
   mongo_db: #database
     image: mongo:latest
     container_name: mongo_db
-    ports: 
-        - 27017:27017
     restart: always
     volumes:
-        - mongodb_data_container:/data/db
-    networks: [dev]
+        - app_data:/var/lib/mongodb/data
+    networks: 
+      dev:
+        ipv4_address: 192.168.42.4
 
     
 # volumes (actual local storage that will be used by containers for persistent data)
-volumes: 
+volumes:
   app_data:
-  mongodb_data_container:  

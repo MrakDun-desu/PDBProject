@@ -29,5 +29,9 @@ public class EShopDbContext : DbContext
             .HasMany(order => order.OrderItems)
             .WithOne(orderItem => orderItem.Order)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<OrderItemEntity>()
+            .HasOne(orderItem => orderItem.Product);
+
     }
 }

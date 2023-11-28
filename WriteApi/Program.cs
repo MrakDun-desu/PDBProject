@@ -3,6 +3,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using WriteApi;
+using WriteApi.Enums;
 using WriteApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,7 +42,13 @@ using (var scope = app.Services.CreateScope())
 }
 
 var userGroup = app.MapGroup("user");
+var productGroup = app.MapGroup("product");
+var orderGroup = app.MapGroup("order");
+var orderItemGroup = app.MapGroup("orderItem");
 MapUsers(userGroup);
+MapProducts(productGroup);
+MapOrders(orderGroup);
+MapOrderItems(orderItemGroup);
 
 app.Run();
 
@@ -64,7 +71,7 @@ void MapUsers(IEndpointRouteBuilder routeBuilder)
         });
 
     routeBuilder.MapPut(string.Empty,
-        Results<Ok<UserModel>, NotFound<string>> (Mapper mapper, EShopDbContext dbContext, UserModel userModel) =>
+        Results<Ok, NotFound<string>> (Mapper mapper, EShopDbContext dbContext, UserModel userModel) =>
         {
             if (dbContext.Users.All(user => user.Id != userModel.Id))
             {
@@ -72,10 +79,10 @@ void MapUsers(IEndpointRouteBuilder routeBuilder)
             }
 
             var userEntity = mapper.ToEntity(userModel);
-            var updatedEntry = dbContext.Users.Update(userEntity);
+            dbContext.Users.Update(userEntity);
             dbContext.SaveChanges();
 
-            return TypedResults.Ok(mapper.ToModel(updatedEntry.Entity));
+            return TypedResults.Ok();
         });
 
     routeBuilder.MapDelete("{id:int}",
@@ -87,6 +94,191 @@ void MapUsers(IEndpointRouteBuilder routeBuilder)
             }
 
             dbContext.Users.Remove(userToDelete);
+            dbContext.SaveChanges();
+            return TypedResults.Ok();
+        });
+}
+
+void MapProducts(IEndpointRouteBuilder routeBuilder)
+{
+    routeBuilder.MapPost(string.Empty,
+        Ok<int> (Mapper mapper, EShopDbContext dbContext, ProductModel productModel) =>
+        {
+            var insertedEntry = dbContext.Products.Add(mapper.ToEntity(productModel with { Id = 0 }));
+            dbContext.SaveChanges();
+
+            return TypedResults.Ok(insertedEntry.Entity.Id);
+        });
+
+    routeBuilder.MapPut(string.Empty,
+        Results<Ok, NotFound<string>> (Mapper mapper, EShopDbContext dbContext,
+            ProductModel productModel) =>
+        {
+            if (dbContext.Products.All(product => product.Id != productModel.Id))
+            {
+                return TypedResults.NotFound($"Product with the id {productModel.Id} couldn't be found!");
+            }
+
+            var productEntity = mapper.ToEntity(productModel);
+            dbContext.Products.Update(productEntity);
+            dbContext.SaveChanges();
+
+            return TypedResults.Ok();
+        });
+
+    routeBuilder.MapDelete("{id:int}",
+        Results<Ok, NotFound<string>> (EShopDbContext dbContext, int id) =>
+        {
+            if (dbContext.Products.Find(id) is not { } productToDelete)
+            {
+                return TypedResults.NotFound($"Product with the id {id} couldn't be found!");
+            }
+
+            dbContext.Products.Remove(productToDelete);
+            dbContext.SaveChanges();
+            return TypedResults.Ok();
+        });
+}
+
+void MapOrders(IEndpointRouteBuilder routeBuilder)
+{
+    routeBuilder.MapPost(string.Empty,
+        Ok<int> (Mapper mapper, EShopDbContext dbContext, OrderModel orderModel) =>
+        {
+            var insertedEntry = dbContext.Orders.Add(mapper.ToEntity(orderModel with { Id = 0 }));
+            dbContext.SaveChanges();
+
+            return TypedResults.Ok(insertedEntry.Entity.Id);
+        });
+
+    routeBuilder.MapPost("{id:int}/checkout",
+        Results<Ok, BadRequest<string>, NotFound<string>> (EShopDbContext dbContext, int id) =>
+        {
+            var orderEntity = dbContext.Orders
+                .Include(order => order.OrderItems)
+                .ThenInclude(orderItemEntity => orderItemEntity.Product)
+                .SingleOrDefault(order => order.Id == id);
+            if (orderEntity is null)
+            {
+                return TypedResults.NotFound($"Order with the id {id} couldn't be found!");
+            }
+
+            if (orderEntity.State != OrderState.InBasket)
+            {
+                return TypedResults.BadRequest($"Cannot checkout order in state {orderEntity.State}!");
+            }
+
+            foreach (var orderItem in orderEntity.OrderItems)
+            {
+                if (orderItem.ProductCount > orderItem.Product.StockCount)
+                {
+                    return TypedResults.BadRequest($"Not enough of product {orderItem.Product.Name} in stock!");
+                }
+
+                orderItem.Product.StockCount -= orderItem.ProductCount;
+                dbContext.Products.Update(orderItem.Product);
+            }
+
+            orderEntity.State = OrderState.Ordered;
+            orderEntity.OrderedDate = DateOnly.FromDateTime(DateTime.Now);
+            dbContext.Orders.Update(orderEntity);
+            dbContext.SaveChanges();
+
+            return TypedResults.Ok();
+        });
+
+    routeBuilder.MapPost("{id:int}/ship",
+        Results<Ok, BadRequest<string>, NotFound<string>> (EShopDbContext dbContext, int id) =>
+        {
+            if (dbContext.Orders.Find(id) is not { } orderEntity)
+            {
+                return TypedResults.NotFound($"Order with the id {id} couldn't be found!");
+            }
+
+            if (orderEntity.State != OrderState.Ordered)
+            {
+                return TypedResults.BadRequest($"Cannot ship order in state {orderEntity.State}!");
+            }
+
+            orderEntity.State = OrderState.Shipped;
+            orderEntity.ShippedDate = DateOnly.FromDateTime(DateTime.Now);
+            dbContext.Orders.Update(orderEntity);
+            dbContext.SaveChanges();
+
+            return TypedResults.Ok();
+        });
+
+    routeBuilder.MapPost("{id:int}/confirm",
+        Results<Ok, BadRequest<string>, NotFound<string>> (EShopDbContext dbContext, int id) =>
+        {
+            if (dbContext.Orders.Find(id) is not { } orderEntity)
+            {
+                return TypedResults.NotFound($"Order with the id {id} couldn't be found!");
+            }
+
+            if (orderEntity.State != OrderState.Shipped)
+            {
+                return TypedResults.BadRequest($"Cannot confirm order in state {orderEntity.State}!");
+            }
+
+            orderEntity.State = OrderState.Received;
+            orderEntity.ReceivedDate = DateOnly.FromDateTime(DateTime.Now);
+            dbContext.Orders.Update(orderEntity);
+            dbContext.SaveChanges();
+
+            return TypedResults.Ok();
+        });
+
+    routeBuilder.MapDelete("{id:int}",
+        Results<Ok, NotFound<string>> (EShopDbContext dbContext, int id) =>
+        {
+            if (dbContext.Orders.Find(id) is not { } orderToDelete)
+            {
+                return TypedResults.NotFound($"Order with the id {id} couldn't be found!");
+            }
+
+            dbContext.Orders.Remove(orderToDelete);
+            dbContext.SaveChanges();
+            return TypedResults.Ok();
+        });
+}
+
+void MapOrderItems(IEndpointRouteBuilder routeBuilder)
+{
+    routeBuilder.MapPost(string.Empty, 
+        Results<Ok, BadRequest<string>, NotFound<string>> (Mapper mapper, EShopDbContext dbContext,
+            OrderItemModel orderItemModel) =>
+        {
+            if (dbContext.Orders.Find(orderItemModel.OrderId) is not { } orderEntity)
+            {
+                return TypedResults.NotFound($"Order with the id {orderItemModel.OrderId} couldn't be found!");
+            }
+
+            if (orderEntity.State != OrderState.InBasket)
+            {
+                return TypedResults.BadRequest("Cannot change products, order no longer in basket!");
+            }
+
+            if (dbContext.OrderItems.Find(orderItemModel.ProductId, orderItemModel.OrderId) is { } orderItemEntity)
+            {
+                if (orderItemModel.ProductCount == 0)
+                {
+                    dbContext.OrderItems.Remove(orderItemEntity);
+                }
+                else
+                {
+                    orderItemEntity.ProductCount = orderItemModel.ProductCount;
+                }
+            }
+            else
+            {
+                if (orderItemModel.ProductCount != 0)
+                {
+                    var newEntity = mapper.ToEntity(orderItemModel);
+                    dbContext.OrderItems.Add(newEntity);
+                }
+            }
+
             dbContext.SaveChanges();
             return TypedResults.Ok();
         });
