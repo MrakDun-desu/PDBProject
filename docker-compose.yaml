@@ -15,7 +15,7 @@ services: # individual services
       context: WriteApi
       dockerfile: Dockerfile
     environment: # environment vars for dynamic configuration (no need to hardcode anywhere else)
-      - ConnectionStrings__DefaultConnection=User ID=postgres;Password=postgres;Server=postgres_db;Port=5432;Database=eshop;IntegratedSecurity=true;
+      - ConnectionStrings__DefaultConnection=User ID=postgres;Password=postgres;Server=localhost;Port=5432;Database=eshop;IntegratedSecurity=true;
       - ASPNETCORE_URLS=http://+:80
     networks: [dev] # connected to the dev network
     
@@ -31,7 +31,19 @@ services: # individual services
     volumes: # store persistent data on the app_data volume
       - app_data:/var/lib/postgresql/data # physical location of the volume
     networks: [dev] # connected to the dev network
+
+  mongo_db: #database
+    image: mongo:latest
+    container_name: mongo_db
+    ports: 
+        - 27017:27017
+    restart: always
+    volumes:
+        - mongodb_data_container:/data/db
+    networks: [dev]
+
     
 # volumes (actual local storage that will be used by containers for persistent data)
 volumes: 
   app_data:
+  mongodb_data_container:  
