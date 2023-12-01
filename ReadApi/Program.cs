@@ -1,11 +1,13 @@
-using PDBProject.ReadApi.Configurations;
-using PDBProject.ReadApi.Services;
+using PDBProject.Dal.Mongo.Configurations;
+using PDBProject.Dal.Mongo.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.Configure<DatabaseSettings>(builder.Configuration.GetSection("MongoDB"));
+var mongoDbSection = builder.Configuration.GetSection("MongoDB");
+var databaseSettings = mongoDbSection.Get<DatabaseSettings>()!;
 
+builder.Services.AddSingleton(databaseSettings);
 builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<ProductService>();
 

@@ -1,24 +1,28 @@
-// create a builder that will create our needed application for us
-
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using PDBProject.Common.Enums;
-using PDBProject.Common.Models;
+using PDBProject.Dal.Common.Enums;
+using PDBProject.Dal.Common.Models;
+using PDBProject.Dal.Mongo.Configurations;
+using PDBProject.Dal.Mongo.Services;
 using PDBProject.WriteApi;
 
+// create a builder that will create our needed application for us
 var builder = WebApplication.CreateBuilder(args);
 
 // get the connection string from configuration and connect to database
-// if we're running for development, we'll get it through the appsettings.json,
+// if we're running for development, we'll get it through the appSettings.json,
 // if we're running for production (in docker), we'll get it through environment variable
 // (builder can automatically get the correctly named env variable)
 var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<EShopDbContext>(options => options.UseNpgsql(connStr));
-// note: for mongodb, you *probably* won't use entity framework since that's mostly used for relational dbs.
-// instead of adding DB context to services, you'll just add whatever service you'll need to provide 
-// interaction with mongodb
 
 builder.Services.AddSingleton<Mapper>();
+var mongoDbSection = builder.Configuration.GetSection("MongoDB");
+var databaseSettings = mongoDbSection.Get<DatabaseSettings>()!;
+
+builder.Services.AddSingleton(databaseSettings);
+builder.Services.AddSingleton<UserService>();
+builder.Services.AddSingleton<ProductService>();
 
 // add swagger to the builder (web UI for making the requests)
 builder.Services.AddEndpointsApiExplorer();
@@ -38,10 +42,10 @@ using (var scope = app.Services.CreateScope())
     if (dbContext.Database.GetPendingMigrations().Any()) dbContext.Database.Migrate();
 }
 
-var userGroup = app.MapGroup("user");
-var productGroup = app.MapGroup("product");
-var orderGroup = app.MapGroup("order");
-var orderItemGroup = app.MapGroup("orderItem");
+var userGroup = app.MapGroup("User");
+var productGroup = app.MapGroup("Product");
+var orderGroup = app.MapGroup("Order");
+var orderItemGroup = app.MapGroup("OrderItem");
 MapUsers(userGroup);
 MapProducts(productGroup);
 MapOrders(orderGroup);
@@ -54,38 +58,75 @@ return;
 void MapUsers(IEndpointRouteBuilder routeBuilder)
 {
     routeBuilder.MapPost(string.Empty,
-        Results<Ok<int>, BadRequest<string>> (Mapper mapper, EShopDbContext dbContext, UserModel userModel) =>
+        async Task<Results<Ok<int>, BadRequest<string>, ProblemHttpResult>>
+            (Mapper mapper, EShopDbContext dbContext, UserModel userModel, UserService userService) =>
         {
             if (dbContext.Users.Any(user => user.Email == userModel.Email))
                 return TypedResults.BadRequest("User with the same email already exists!");
 
-            var insertedEntry = dbContext.Users.Add(mapper.ToEntity(userModel with { Id = 0 }));
-            dbContext.SaveChanges();
+            var insertedEntry = dbContext.Users.Add(mapper.ToPostgresEntity(userModel with { Id = 0 }));
+            try
+            {
+                dbContext.SaveChanges();
+            }
+            catch (DbUpdateException)
+            {
+                return TypedResults.Problem("Couldn't save changes to the database!");
+            }
+
+            var insertedEntity = insertedEntry.Entity;
+
+            var mongoEntity = mapper.ToMongoEntity(insertedEntity);
+
+            await userService.CreateAsync(mongoEntity);
 
             return TypedResults.Ok(insertedEntry.Entity.Id);
         });
 
     routeBuilder.MapPut(string.Empty,
-        Results<Ok, NotFound<string>> (Mapper mapper, EShopDbContext dbContext, UserModel userModel) =>
+        async Task<Results<Ok, NotFound<string>, ProblemHttpResult>>
+            (Mapper mapper, EShopDbContext dbContext, UserService userService, UserModel userModel) =>
         {
             if (dbContext.Users.All(user => user.Id != userModel.Id))
                 return TypedResults.NotFound($"User with the id {userModel.Id} couldn't be found!");
 
-            var userEntity = mapper.ToEntity(userModel);
+            var userEntity = mapper.ToPostgresEntity(userModel);
             dbContext.Users.Update(userEntity);
-            dbContext.SaveChanges();
+            try
+            {
+                dbContext.SaveChanges();
+            }
+            catch (DbUpdateException)
+            {
+                return TypedResults.Problem("Couldn't save changes to the database!");
+            }
+
+            var mongoEntity = mapper.ToMongoEntity(userEntity);
+
+            await userService.UpdateAsync(mongoEntity);
 
             return TypedResults.Ok();
         });
 
     routeBuilder.MapDelete("{id:int}",
-        Results<Ok, NotFound<string>> (EShopDbContext dbContext, int id) =>
+        async Task<Results<Ok, NotFound<string>, ProblemHttpResult>>
+            (EShopDbContext dbContext, UserService userService, int id) =>
         {
             if (dbContext.Users.Find(id) is not { } userToDelete)
                 return TypedResults.NotFound($"User with the id {id} couldn't be found!");
 
             dbContext.Users.Remove(userToDelete);
-            dbContext.SaveChanges();
+            try
+            {
+                dbContext.SaveChanges();
+            }
+            catch (DbUpdateException)
+            {
+                return TypedResults.Problem("Couldn't save changes to the database!");
+            }
+
+            await userService.RemoveAsync(id);
+
             return TypedResults.Ok();
         });
 }
@@ -93,36 +134,69 @@ void MapUsers(IEndpointRouteBuilder routeBuilder)
 void MapProducts(IEndpointRouteBuilder routeBuilder)
 {
     routeBuilder.MapPost(string.Empty,
-        Ok<int> (Mapper mapper, EShopDbContext dbContext, ProductModel productModel) =>
+        async Task<Results<Ok<int>, ProblemHttpResult>>
+            (Mapper mapper, EShopDbContext dbContext, ProductService productService, ProductModel productModel) =>
         {
-            var insertedEntry = dbContext.Products.Add(mapper.ToEntity(productModel with { Id = 0 }));
-            dbContext.SaveChanges();
+            var insertedEntry = dbContext.Products.Add(mapper.ToPostgresEntity(productModel with { Id = 0 }));
+            try
+            {
+                dbContext.SaveChanges();
+            }
+            catch (DbUpdateException)
+            {
+                return TypedResults.Problem("Couldn't save changes to the database!");
+            }
+
+            var insertedEntity = insertedEntry.Entity;
+            var mongoEntity = mapper.ToMongoEntity(insertedEntity);
+            await productService.CreateAsync(mongoEntity);
 
             return TypedResults.Ok(insertedEntry.Entity.Id);
         });
 
     routeBuilder.MapPut(string.Empty,
-        Results<Ok, NotFound<string>> (Mapper mapper, EShopDbContext dbContext,
-            ProductModel productModel) =>
+        async Task<Results<Ok, NotFound<string>, ProblemHttpResult>>
+            (Mapper mapper, EShopDbContext dbContext, ProductService productService, ProductModel productModel) =>
         {
             if (dbContext.Products.All(product => product.Id != productModel.Id))
                 return TypedResults.NotFound($"Product with the id {productModel.Id} couldn't be found!");
 
-            var productEntity = mapper.ToEntity(productModel);
+            var productEntity = mapper.ToPostgresEntity(productModel);
             dbContext.Products.Update(productEntity);
-            dbContext.SaveChanges();
+            try
+            {
+                dbContext.SaveChanges();
+            }
+            catch (DbUpdateException)
+            {
+                return TypedResults.Problem("Couldn't save changes to the database!");
+            }
+
+            var mongoEntity = mapper.ToMongoEntity(productEntity);
+            await productService.UpdateAsync(mongoEntity);
 
             return TypedResults.Ok();
         });
 
     routeBuilder.MapDelete("{id:int}",
-        Results<Ok, NotFound<string>> (EShopDbContext dbContext, int id) =>
+        async Task<Results<Ok, NotFound<string>, ProblemHttpResult>>
+            (EShopDbContext dbContext, ProductService productService, int id) =>
         {
             if (dbContext.Products.Find(id) is not { } productToDelete)
                 return TypedResults.NotFound($"Product with the id {id} couldn't be found!");
 
             dbContext.Products.Remove(productToDelete);
-            dbContext.SaveChanges();
+            try
+            {
+                dbContext.SaveChanges();
+            }
+            catch (DbUpdateException)
+            {
+                return TypedResults.Problem("Couldn't save changes to the database!");
+            }
+
+            await productService.RemoveAsync(id);
+
             return TypedResults.Ok();
         });
 }
@@ -130,16 +204,34 @@ void MapProducts(IEndpointRouteBuilder routeBuilder)
 void MapOrders(IEndpointRouteBuilder routeBuilder)
 {
     routeBuilder.MapPost(string.Empty,
-        Ok<int> (Mapper mapper, EShopDbContext dbContext, OrderModel orderModel) =>
+        async Task<Results<Ok<int>, ProblemHttpResult>>
+            (Mapper mapper, EShopDbContext dbContext, UserService userService, OrderModel orderModel) =>
         {
-            var insertedEntry = dbContext.Orders.Add(mapper.ToEntity(orderModel with { Id = 0 }));
-            dbContext.SaveChanges();
+            var insertedEntry = dbContext.Orders.Add(mapper.ToPostgresEntity(orderModel with { Id = 0 }));
+            try
+            {
+                dbContext.SaveChanges();
+            }
+            catch (DbUpdateException)
+            {
+                return TypedResults.Problem("Couldn't save changes to the database!");
+            }
+
+            var updatedUser = dbContext.Users
+                .Include(user => user.Orders)
+                .ThenInclude(order => order.OrderItems)
+                .Single(user => user.Id == orderModel.UserId);
+
+            var mongoEntity = mapper.ToMongoEntity(updatedUser);
+
+            await userService.UpdateAsync(mongoEntity);
 
             return TypedResults.Ok(insertedEntry.Entity.Id);
         });
 
     routeBuilder.MapPost("{id:int}/checkout",
-        Results<Ok, BadRequest<string>, NotFound<string>> (EShopDbContext dbContext, int id) =>
+        async Task<Results<Ok, BadRequest<string>, NotFound<string>, ProblemHttpResult>>
+            (EShopDbContext dbContext, Mapper mapper, UserService userService, int id) =>
         {
             var orderEntity = dbContext.Orders
                 .Include(order => order.OrderItems)
@@ -162,13 +254,30 @@ void MapOrders(IEndpointRouteBuilder routeBuilder)
             orderEntity.State = OrderState.Ordered;
             orderEntity.OrderedDate = DateTime.UtcNow;
             dbContext.Orders.Update(orderEntity);
-            dbContext.SaveChanges();
+            try
+            {
+                dbContext.SaveChanges();
+            }
+            catch (DbUpdateException)
+            {
+                return TypedResults.Problem("Couldn't save changes to the database!");
+            }
+
+            var updatedUser = dbContext.Users
+                .Include(user => user.Orders)
+                .ThenInclude(order => order.OrderItems)
+                .Single(user => user.Id == orderEntity.UserId);
+
+            var mongoEntity = mapper.ToMongoEntity(updatedUser);
+
+            await userService.UpdateAsync(mongoEntity);
 
             return TypedResults.Ok();
         });
 
     routeBuilder.MapPost("{id:int}/ship",
-        Results<Ok, BadRequest<string>, NotFound<string>> (EShopDbContext dbContext, int id) =>
+        async Task<Results<Ok, BadRequest<string>, NotFound<string>, ProblemHttpResult>>
+            (EShopDbContext dbContext, UserService userService, Mapper mapper, int id) =>
         {
             if (dbContext.Orders.Find(id) is not { } orderEntity)
                 return TypedResults.NotFound($"Order with the id {id} couldn't be found!");
@@ -179,13 +288,30 @@ void MapOrders(IEndpointRouteBuilder routeBuilder)
             orderEntity.State = OrderState.Shipped;
             orderEntity.ShippedDate = DateTime.UtcNow;
             dbContext.Orders.Update(orderEntity);
-            dbContext.SaveChanges();
+            try
+            {
+                dbContext.SaveChanges();
+            }
+            catch (DbUpdateException)
+            {
+                return TypedResults.Problem("Couldn't save changes to the database!");
+            }
+
+            var updatedUser = dbContext.Users
+                .Include(user => user.Orders)
+                .ThenInclude(order => order.OrderItems)
+                .Single(user => user.Id == orderEntity.UserId);
+
+            var mongoEntity = mapper.ToMongoEntity(updatedUser);
+
+            await userService.UpdateAsync(mongoEntity);
 
             return TypedResults.Ok();
         });
 
     routeBuilder.MapPost("{id:int}/confirm",
-        Results<Ok, BadRequest<string>, NotFound<string>> (EShopDbContext dbContext, int id) =>
+        async Task<Results<Ok, BadRequest<string>, NotFound<string>, ProblemHttpResult>>
+            (EShopDbContext dbContext, Mapper mapper, UserService userService, int id) =>
         {
             if (dbContext.Orders.Find(id) is not { } orderEntity)
                 return TypedResults.NotFound($"Order with the id {id} couldn't be found!");
@@ -196,19 +322,55 @@ void MapOrders(IEndpointRouteBuilder routeBuilder)
             orderEntity.State = OrderState.Received;
             orderEntity.ReceivedDate = DateTime.UtcNow;
             dbContext.Orders.Update(orderEntity);
-            dbContext.SaveChanges();
+            try
+            {
+                dbContext.SaveChanges();
+            }
+            catch (DbUpdateException)
+            {
+                return TypedResults.Problem("Couldn't save changes to the database!");
+            }
+
+            var updatedUser = dbContext.Users
+                .Include(user => user.Orders)
+                .ThenInclude(order => order.OrderItems)
+                .Single(user => user.Id == orderEntity.UserId);
+
+            var mongoEntity = mapper.ToMongoEntity(updatedUser);
+
+            await userService.UpdateAsync(mongoEntity);
 
             return TypedResults.Ok();
         });
 
     routeBuilder.MapDelete("{id:int}",
-        Results<Ok, NotFound<string>> (EShopDbContext dbContext, int id) =>
+        async Task<Results<Ok, NotFound<string>, ProblemHttpResult>>
+            (EShopDbContext dbContext, UserService userService, Mapper mapper, int id) =>
         {
             if (dbContext.Orders.Find(id) is not { } orderToDelete)
                 return TypedResults.NotFound($"Order with the id {id} couldn't be found!");
 
+            var changedUserId = orderToDelete.UserId;
+
             dbContext.Orders.Remove(orderToDelete);
-            dbContext.SaveChanges();
+            try
+            {
+                dbContext.SaveChanges();
+            }
+            catch (DbUpdateException)
+            {
+                return TypedResults.Problem("Couldn't save changes to the database!");
+            }
+
+            var updatedUser = dbContext.Users
+                .Include(user => user.Orders)
+                .ThenInclude(order => order.OrderItems)
+                .Single(user => user.Id == changedUserId);
+
+            var mongoEntity = mapper.ToMongoEntity(updatedUser);
+
+            await userService.UpdateAsync(mongoEntity);
+
             return TypedResults.Ok();
         });
 }
@@ -216,11 +378,14 @@ void MapOrders(IEndpointRouteBuilder routeBuilder)
 void MapOrderItems(IEndpointRouteBuilder routeBuilder)
 {
     routeBuilder.MapPost(string.Empty,
-        Results<Ok, BadRequest<string>, NotFound<string>> (Mapper mapper, EShopDbContext dbContext,
-            OrderItemModel orderItemModel) =>
+        async Task<Results<Ok, BadRequest<string>, NotFound<string>, ProblemHttpResult>>
+            (Mapper mapper, EShopDbContext dbContext, UserService userService, OrderItemModel orderItemModel) =>
         {
             if (dbContext.Orders.Find(orderItemModel.OrderId) is not { } orderEntity)
                 return TypedResults.NotFound($"Order with the id {orderItemModel.OrderId} couldn't be found!");
+            
+            if (dbContext.Products.Find(orderItemModel.ProductId) is null)
+                return TypedResults.NotFound($"Product with the id {orderItemModel.ProductId} couldn't be found!");
 
             if (orderEntity.State != OrderState.InBasket)
                 return TypedResults.BadRequest("Cannot change products, order no longer in basket!");
@@ -236,12 +401,29 @@ void MapOrderItems(IEndpointRouteBuilder routeBuilder)
             {
                 if (orderItemModel.ProductCount != 0)
                 {
-                    var newEntity = mapper.ToEntity(orderItemModel);
+                    var newEntity = mapper.ToPostgresEntity(orderItemModel);
                     dbContext.OrderItems.Add(newEntity);
                 }
             }
 
-            dbContext.SaveChanges();
+            try
+            {
+                dbContext.SaveChanges();
+            }
+            catch (DbUpdateException)
+            {
+                return TypedResults.Problem("Couldn't save changes to the database!");
+            }
+
+            var updatedUser = dbContext.Users
+                .Include(user => user.Orders)
+                .ThenInclude(order => order.OrderItems)
+                .Single(user => user.Id == orderEntity.UserId);
+
+            var mongoEntity = mapper.ToMongoEntity(updatedUser);
+
+            await userService.UpdateAsync(mongoEntity);
+
             return TypedResults.Ok();
         });
 }

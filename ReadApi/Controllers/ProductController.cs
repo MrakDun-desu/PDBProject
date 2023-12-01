@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using PDBProject.ReadApi.Models;
-using PDBProject.ReadApi.Services;
+using PDBProject.Dal.Mongo.Entities;
+using PDBProject.Dal.Mongo.Services;
 
 namespace PDBProject.ReadApi.Controllers;
 

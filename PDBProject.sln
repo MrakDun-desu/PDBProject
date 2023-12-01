@@ -4,7 +4,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WriteApi", "WriteApi\WriteA
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReadApi", "ReadApi\ReadApi.csproj", "{E10B9EFC-21C7-4153-9B58-49CC65BABA24}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{91BB330D-0FC0-4A99-A5D4-8AB872133549}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dal.Common", "Dal.Common\Dal.Common.csproj", "{91BB330D-0FC0-4A99-A5D4-8AB872133549}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dal.Mongo", "Dal.Mongo\Dal.Mongo.csproj", "{CE3A9B60-C4E5-4190-B871-4C13867B06CF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,5 +26,9 @@ Global
 		{91BB330D-0FC0-4A99-A5D4-8AB872133549}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{91BB330D-0FC0-4A99-A5D4-8AB872133549}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{91BB330D-0FC0-4A99-A5D4-8AB872133549}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE3A9B60-C4E5-4190-B871-4C13867B06CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE3A9B60-C4E5-4190-B871-4C13867B06CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE3A9B60-C4E5-4190-B871-4C13867B06CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE3A9B60-C4E5-4190-B871-4C13867B06CF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

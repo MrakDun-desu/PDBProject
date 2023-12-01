@@ -17,6 +17,10 @@ services: # individual services
       context: WriteApi
     environment: # environment vars for dynamic configuration (no need to hardcode anywhere else)
       - ConnectionStrings__DefaultConnection=User ID=postgres;Password=jQ^wxJeE@8x4sZ;Server=postgres_db;Port=5432;Database=eshop;IntegratedSecurity=true;
+      - MongoDB__ConnectionStrings=mongodb://root:sduD2xnvZGLFCq@mongo_db:27017
+      - MongoDB__DatabaseName=eshop
+      - MongoDB__UserCollection=Users
+      - MongoDB__ProductCollection=Products
       - ASPNETCORE_URLS=http://+:80
     networks:
       dev:

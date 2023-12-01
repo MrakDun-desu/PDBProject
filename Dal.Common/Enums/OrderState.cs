@@ -1,4 +1,4 @@
-namespace PDBProject.Common.Enums;
+namespace PDBProject.Dal.Common.Enums;
 
 public enum OrderState
 {

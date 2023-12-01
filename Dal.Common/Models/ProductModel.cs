@@ -1,4 +1,4 @@
-namespace PDBProject.Common.Models;
+namespace PDBProject.Dal.Common.Models;
 
 public record ProductModel
 {

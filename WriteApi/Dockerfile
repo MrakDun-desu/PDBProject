@@ -12,7 +12,7 @@ WORKDIR /src
 COPY ["WriteApi.csproj", "."]
 # once the project file is copied, update the dependencies
 RUN dotnet restore
-# after updatingdependencies, copy the rest of the code
+# after updating dependencies, copy the rest of the code
 COPY . .
 # go to the project directory and build it
 RUN dotnet build "WriteApi.csproj" -c Release -o /app/build

@@ -1,4 +1,4 @@
-using PDBProject.Common.Enums;
+using PDBProject.Dal.Common.Enums;
 
 namespace PDBProject.WriteApi.Entities;
 
@@ -11,6 +11,5 @@ public record OrderEntity
     public DateTime? OrderedDate { get; set; }
     public DateTime? ShippedDate { get; set; }
     public DateTime? ReceivedDate { get; set; }
-
     public ICollection<OrderItemEntity> OrderItems { get; set; } = new List<OrderItemEntity>();
 }

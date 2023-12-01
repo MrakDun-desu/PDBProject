@@ -30,7 +30,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Common\Common.csproj"/>
+        <ProjectReference Include="..\Dal.Common\Dal.Common.csproj" />
+        <ProjectReference Include="..\Dal.Mongo\Dal.Mongo.csproj" />
     </ItemGroup>
 
 </Project>

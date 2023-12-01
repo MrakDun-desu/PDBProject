@@ -1,23 +1,22 @@
-﻿using Microsoft.Extensions.Options;
-using MongoDB.Driver;
-using PDBProject.ReadApi.Configurations;
-using PDBProject.ReadApi.Models;
+﻿using MongoDB.Driver;
+using PDBProject.Dal.Mongo.Configurations;
+using PDBProject.Dal.Mongo.Entities;
 
-namespace PDBProject.ReadApi.Services;
+namespace PDBProject.Dal.Mongo.Services;
 
 public class ProductService
 {
     private readonly IMongoCollection<ProductEntity> _productCollection;
 
-    public ProductService(IOptions<DatabaseSettings> databaseSettings)
+    public ProductService(DatabaseSettings databaseSettings)
     {
-        var mongoClient = new MongoClient(databaseSettings.Value.ConnectionStrings);
-        var mongoDb = mongoClient.GetDatabase(databaseSettings.Value.DatabaseName);
+        var mongoClient = new MongoClient(databaseSettings.ConnectionStrings);
+        var mongoDb = mongoClient.GetDatabase(databaseSettings.DatabaseName);
 
-        if (!mongoDb.ListCollectionNames().ToList().Contains(databaseSettings.Value.ProductCollection))
+        if (!mongoDb.ListCollectionNames().ToList().Contains(databaseSettings.ProductCollection))
             // if collection doesn't exist at startup time, we create it just to be sure
-            mongoDb.CreateCollection(databaseSettings.Value.ProductCollection);
-        _productCollection = mongoDb.GetCollection<ProductEntity>(databaseSettings.Value.ProductCollection);
+            mongoDb.CreateCollection(databaseSettings.ProductCollection);
+        _productCollection = mongoDb.GetCollection<ProductEntity>(databaseSettings.ProductCollection);
     }
 
     public async Task<List<ProductEntity>> GetAsyncAll()
@@ -42,14 +41,14 @@ public class ProductService
         return await _productCollection.Find(x => x.Categories.Contains(category)).ToListAsync();
     }
 
-    public async Task CreateAsync(ProductEntity user)
+    public async Task CreateAsync(ProductEntity product)
     {
-        await _productCollection.InsertOneAsync(user);
+        await _productCollection.InsertOneAsync(product);
     }
 
-    public async Task UpdateAsync(ProductEntity user)
+    public async Task UpdateAsync(ProductEntity product)
     {
-        await _productCollection.ReplaceOneAsync(x => x.Id == user.Id, user);
+        await _productCollection.ReplaceOneAsync(x => x.Id == product.Id, product);
     }
 
     public async Task RemoveAsync(int id)

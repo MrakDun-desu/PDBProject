@@ -1,10 +1,10 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
 
-namespace PDBProject.ReadApi.Models;
+namespace PDBProject.Dal.Mongo.Entities;
 
 public class UserEntity
 {
-    [BsonId] public int Id { get; set; }
+    [BsonId] public int Id { get; init; }
 
     public required string Name { get; set; }
 

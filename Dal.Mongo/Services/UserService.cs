@@ -1,23 +1,22 @@
-﻿using Microsoft.Extensions.Options;
-using MongoDB.Driver;
-using PDBProject.ReadApi.Configurations;
-using PDBProject.ReadApi.Models;
+﻿using MongoDB.Driver;
+using PDBProject.Dal.Mongo.Configurations;
+using PDBProject.Dal.Mongo.Entities;
 
-namespace PDBProject.ReadApi.Services;
+namespace PDBProject.Dal.Mongo.Services;
 
 public class UserService
 {
     private readonly IMongoCollection<UserEntity> _userCollection;
 
-    public UserService(IOptions<DatabaseSettings> databaseSettings)
+    public UserService(DatabaseSettings databaseSettings)
     {
-        var mongoClient = new MongoClient(databaseSettings.Value.ConnectionStrings);
-        var mongoDb = mongoClient.GetDatabase(databaseSettings.Value.DatabaseName);
+        var mongoClient = new MongoClient(databaseSettings.ConnectionStrings);
+        var mongoDb = mongoClient.GetDatabase(databaseSettings.DatabaseName);
 
-        if (!mongoDb.ListCollectionNames().ToList().Contains(databaseSettings.Value.UserCollection))
+        if (!mongoDb.ListCollectionNames().ToList().Contains(databaseSettings.UserCollection))
             // if collection doesn't exist at startup time, we create it just to be sure
-            mongoDb.CreateCollection(databaseSettings.Value.UserCollection);
-        _userCollection = mongoDb.GetCollection<UserEntity>(databaseSettings.Value.UserCollection);
+            mongoDb.CreateCollection(databaseSettings.UserCollection);
+        _userCollection = mongoDb.GetCollection<UserEntity>(databaseSettings.UserCollection);
     }
 
     public async Task<List<UserEntity>> GetAsync()
