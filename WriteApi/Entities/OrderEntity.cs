@@ -2,6 +2,9 @@ using PDBProject.Dal.Common.Enums;
 
 namespace PDBProject.WriteApi.Entities;
 
+/// <summary>
+/// Postgres representation of the OrderModel.
+/// </summary>
 public record OrderEntity
 {
     public int Id { get; init; }

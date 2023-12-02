@@ -3,11 +3,10 @@ using PDBProject.Dal.Mongo.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 var mongoDbSection = builder.Configuration.GetSection("MongoDB");
 var databaseSettings = mongoDbSection.Get<DatabaseSettings>()!;
-
 builder.Services.AddSingleton(databaseSettings);
+
 builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<ProductService>();
 
@@ -18,6 +17,7 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// use the developer settings even in production to show how the API works
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseDeveloperExceptionPage();

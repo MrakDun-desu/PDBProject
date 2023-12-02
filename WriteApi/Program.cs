@@ -58,12 +58,9 @@ return;
 void MapUsers(IEndpointRouteBuilder routeBuilder)
 {
     routeBuilder.MapPost(string.Empty,
-        async Task<Results<Ok<int>, BadRequest<string>, ProblemHttpResult>>
+        async Task<Results<Ok<int>, ProblemHttpResult>>
             (Mapper mapper, EShopDbContext dbContext, UserModel userModel, UserService userService) =>
         {
-            if (dbContext.Users.Any(user => user.Email == userModel.Email))
-                return TypedResults.BadRequest("User with the same email already exists!");
-
             var insertedEntry = dbContext.Users.Add(mapper.ToPostgresEntity(userModel with { Id = 0 }));
             try
             {
@@ -137,7 +134,12 @@ void MapProducts(IEndpointRouteBuilder routeBuilder)
         async Task<Results<Ok<int>, ProblemHttpResult>>
             (Mapper mapper, EShopDbContext dbContext, ProductService productService, ProductModel productModel) =>
         {
-            var insertedEntry = dbContext.Products.Add(mapper.ToPostgresEntity(productModel with { Id = 0 }));
+            var lowercaseCategories = productModel.Categories.Select(cat => cat.ToLowerInvariant()).ToArray();
+            var insertedEntry =
+                dbContext.Products.Add(mapper.ToPostgresEntity(productModel with
+                {
+                    Id = 0, Categories = lowercaseCategories
+                }));
             try
             {
                 dbContext.SaveChanges();
@@ -161,7 +163,8 @@ void MapProducts(IEndpointRouteBuilder routeBuilder)
             if (dbContext.Products.All(product => product.Id != productModel.Id))
                 return TypedResults.NotFound($"Product with the id {productModel.Id} couldn't be found!");
 
-            var productEntity = mapper.ToPostgresEntity(productModel);
+            var lowercaseCategories = productModel.Categories.Select(cat => cat.ToLowerInvariant()).ToArray();
+            var productEntity = mapper.ToPostgresEntity(productModel with { Categories = lowercaseCategories });
             dbContext.Products.Update(productEntity);
             try
             {
@@ -383,7 +386,7 @@ void MapOrderItems(IEndpointRouteBuilder routeBuilder)
         {
             if (dbContext.Orders.Find(orderItemModel.OrderId) is not { } orderEntity)
                 return TypedResults.NotFound($"Order with the id {orderItemModel.OrderId} couldn't be found!");
-            
+
             if (dbContext.Products.Find(orderItemModel.ProductId) is null)
                 return TypedResults.NotFound($"Product with the id {orderItemModel.ProductId} couldn't be found!");
 

@@ -2,6 +2,9 @@
 
 namespace PDBProject.Dal.Mongo.Entities;
 
+/// <summary>
+/// Mongo representation of the UserModel.
+/// </summary>
 public class UserEntity
 {
     [BsonId] public int Id { get; init; }

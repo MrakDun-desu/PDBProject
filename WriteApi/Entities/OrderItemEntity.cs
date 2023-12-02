@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace PDBProject.WriteApi.Entities;
 
+/// <summary>
+/// Postgres representation of the OrderItemModel.
+/// </summary>
 [PrimaryKey(nameof(ProductId), nameof(OrderId))]
 public record OrderItemEntity
 {

@@ -2,6 +2,9 @@
 
 namespace PDBProject.Dal.Mongo.Entities;
 
+/// <summary>
+/// Mongo representation of the ProductModel.
+/// </summary>
 public class ProductEntity
 {
     [BsonId] public int Id { get; set; }

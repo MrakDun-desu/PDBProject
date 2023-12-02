@@ -2,6 +2,9 @@
 
 namespace PDBProject.Dal.Mongo.Entities;
 
+/// <summary>
+/// Mongo representation of the OrderModel.
+/// </summary>
 public class OrderEntity
 {
     public int Id { get; init; }

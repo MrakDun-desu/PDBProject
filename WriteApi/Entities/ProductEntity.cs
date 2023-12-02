@@ -1,5 +1,8 @@
 namespace PDBProject.WriteApi.Entities;
 
+/// <summary>
+/// Postgres representation of the ProductModel.
+/// </summary>
 public record ProductEntity
 {
     public int Id { get; init; }

@@ -1,5 +1,8 @@
 namespace PDBProject.Dal.Common.Models;
 
+/// <summary>
+/// Represents a user of the e-shop.
+/// </summary>
 public record UserModel
 {
     public required int Id { get; init; }

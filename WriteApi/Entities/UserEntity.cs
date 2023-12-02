@@ -1,5 +1,8 @@
 namespace PDBProject.WriteApi.Entities;
 
+/// <summary>
+/// Postgres representation of the UserModel.
+/// </summary>
 public record UserEntity
 {
     public int Id { get; init; }
