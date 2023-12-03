@@ -7,10 +7,16 @@ EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /src
-COPY ["ReadApi.csproj", "ReadApi/"]
+RUN mkdir "Dal.Mongo"
+RUN mkdir "Dal.Common"
+COPY ["ReadApi/ReadApi.csproj", "ReadApi/"]
+COPY ["Dal.Mongo/Dal.Mongo.csproj", "Dal.Mongo/"]
+COPY ["Dal.Common/Dal.Common.csproj", "Dal.Common/"]
 RUN dotnet restore "ReadApi/ReadApi.csproj"
-COPY . .
+COPY ["Dal.Mongo", "Dal.Mongo"]
+COPY ["Dal.Common", "Dal.Common"]
 WORKDIR "/src/ReadApi"
+COPY ReadApi .
 RUN dotnet build "ReadApi.csproj" -c Release -o /app/build
 
 FROM build AS publish

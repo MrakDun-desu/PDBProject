@@ -14,7 +14,7 @@ services: # individual services
     depends_on: [ "postgres_db" ] # depends on the database service
     container_name: write_api
     build: # build the dockerfile inside this directory before starting it
-      context: WriteApi
+      dockerfile: WriteApi.Dockerfile
     environment: # environment vars for dynamic configuration (no need to hardcode anywhere else)
       - ConnectionStrings__DefaultConnection=User ID=postgres;Password=jQ^wxJeE@8x4sZ;Server=postgres_db;Port=5432;Database=eshop;IntegratedSecurity=true;
       - MongoDB__ConnectionStrings=mongodb://root:sduD2xnvZGLFCq@mongo_db:27017
@@ -44,7 +44,7 @@ services: # individual services
     depends_on: [ "mongo_db" ]
     container_name: read_api
     build:
-      context: ReadApi
+      dockerfile: ReadApi.Dockerfile
     environment: # environment vars for dynamic configuration (no need to hardcode anywhere else)
       - MongoDB__ConnectionStrings=mongodb://root:sduD2xnvZGLFCq@mongo_db:27017
       - MongoDB__DatabaseName=eshop
